@@ -1,154 +1,143 @@
 package com.telemedicina.shared.exception;
 
-import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.validation.FieldError;
+import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.sql.SQLException;
-import java.util.List;
-
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    @ExceptionHandler(org.springframework.jdbc.UncategorizedSQLException.class)
-    public ResponseEntity<ApiError> handleUncategorizedSQL(
-            org.springframework.jdbc.UncategorizedSQLException ex,
-            HttpServletRequest request) {
-
-        String message = extractPgMessage(ex);
-        log.warn("Excepție SQL neîncadrată: {}", message);
-
-        //pacient fără abonament activ încearcă să creeze consultație
-        if (message.contains("NO_ACTIVE_SUBSCRIPTION")) {
-            String detail = message.replace("NO_ACTIVE_SUBSCRIPTION:", "").trim();
-            return buildResponse(new NoActiveSubscriptionException(detail), request);
-        }
-
-        //tutore adăugat pentru pacient adult
-        if (message.contains("GUARDIAN_ONLY_FOR_CHILD")) {
-            String detail = message.replace("GUARDIAN_ONLY_FOR_CHILD:", "").trim();
-            return buildError(HttpStatus.BAD_REQUEST, "Date invalide", detail, request.getRequestURI());
-        }
-
-        if (message.contains("NO_SLOTS_AVAILABLE")) {
-            String detail = message.replace("NO_SLOTS_AVAILABLE:", "").trim();
-            return buildResponse(new AppointmentUnavailableException(detail), request);
-        }
-
-        if (message.contains("MAX_SYMPTOMS_REACHED")) {
-            return buildError(HttpStatus.BAD_REQUEST, "Simptome invalide",
-                    "Maximum 3 simptome sunt permise per consultație.", request.getRequestURI());
-        }
-
-        if (message.contains("INVALID_STATUS_TRANSITION")) {
-            String detail = message.replace("INVALID_STATUS_TRANSITION:", "").trim();
-            return buildError(HttpStatus.CONFLICT, "Tranziție invalidă", detail, request.getRequestURI());
-        }
-
-        if (message.contains("EMERGENCY_NO_APPOINTMENT")) {
-            return buildError(HttpStatus.BAD_REQUEST, "Caz de urgență",
-                    "Cazurile de urgență necesită prezentare directă la spital.", request.getRequestURI());
-        }
-
-        if (message.contains("DIAGNOSIS_NOT_ELIGIBLE")) {
-            String detail = message.replace("DIAGNOSIS_NOT_ELIGIBLE:", "").trim();
-            return buildError(HttpStatus.BAD_REQUEST, "Rețetă automată indisponibilă", detail, request.getRequestURI());
-        }
-
-        // Eroare SQL necunoscută — logăm complet pentru debugging
-        log.error("Excepție SQL necunoscută", ex);
-        return buildError(HttpStatus.INTERNAL_SERVER_ERROR, "Eroare server",
-                "Eroare internă la procesarea cererii.", request.getRequestURI());
-    }
-
-
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleValidation(
-            MethodArgumentNotValidException ex, HttpServletRequest request) {
-
-        List<String> details = ex.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getDefaultMessage)
-                .toList();
-
-        ApiError error = new ApiError(400, "Date invalide",
-                "Validarea datelor a eșuat.", request.getRequestURI());
-        error.setDetails(details);
-
-        return ResponseEntity.badRequest().body(error);
-    }
-
-    /** Excepțiile noastre custom de business */
+    // Excepțiile noastre custom
     @ExceptionHandler(ApiException.class)
-    public ResponseEntity<ApiError> handleApiException(ApiException ex, HttpServletRequest request) {
-        return buildResponse(ex, request);
+    public ResponseEntity<ApiError> handleApiException(ApiException ex) {
+        log.warn("ApiException: {}", ex.getMessage());
+        ApiError error = new ApiError(
+                ex.getStatus().value(),
+                ex.getStatus().getReasonPhrase(),
+                ex.getMessage()
+        );
+        return ResponseEntity.status(ex.getStatus()).body(error);
     }
 
-    /** Credențiale greșite la login */
-    @ExceptionHandler(BadCredentialsException.class)
-    public ResponseEntity<ApiError> handleBadCredentials(HttpServletRequest request) {
-        return buildError(HttpStatus.UNAUTHORIZED, "Autentificare eșuată",
-                "Email sau parolă incorectă.", request.getRequestURI());
-    }
+    // Excepții aruncate din PL/pgSQL prin RAISE EXCEPTION
+    // Cerința proiect: minim 2 excepții prinse din DB
+    @ExceptionHandler(SQLException.class)
+    public ResponseEntity<ApiError> handleSQLException(SQLException ex) {
+        log.error("SQLException din DB: {}", ex.getMessage());
+        String msg = ex.getMessage() != null ? ex.getMessage() : "Eroare bază de date";
 
-    /** Acces interzis (utilizator autentificat dar fără permisiuni) */
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ApiError> handleAccessDenied(HttpServletRequest request) {
-        return buildError(HttpStatus.FORBIDDEN, "Acces interzis",
-                "Nu ai permisiunile necesare pentru această acțiune.", request.getRequestURI());
-    }
-
-    /** Violări de constrângeri DB (UNIQUE, FK) */
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<ApiError> handleDataIntegrity(
-            DataIntegrityViolationException ex, HttpServletRequest request) {
-        log.warn("Violație constrângere DB: {}", ex.getMessage());
-        return buildError(HttpStatus.CONFLICT, "Conflict date",
-                "Datele introduse încalcă o constrângere a bazei de date.", request.getRequestURI());
-    }
-
-    /** Fallback — orice altă excepție neașteptată */
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleGeneral(Exception ex, HttpServletRequest request) {
-        log.error("Excepție neașteptată la {}: {}", request.getRequestURI(), ex.getMessage(), ex);
-        return buildError(HttpStatus.INTERNAL_SERVER_ERROR, "Eroare server",
-                "A apărut o eroare internă. Contactați administratorul.", request.getRequestURI());
-    }
-
-
-
-    private ResponseEntity<ApiError> buildResponse(ApiException ex, HttpServletRequest request) {
-        return buildError(ex.getStatus(), ex.getStatus().getReasonPhrase(),
-                ex.getMessage(), request.getRequestURI());
-    }
-
-    private ResponseEntity<ApiError> buildError(HttpStatus status, String error,
-                                                String message, String path) {
-        ApiError apiError = new ApiError(status.value(), error, message, path);
-        return ResponseEntity.status(status).body(apiError);
-    }
-
-    /** Extrage mesajul din excepțiile JDBC care înfășoară SQLException */
-    private String extractPgMessage(Exception ex) {
-        Throwable cause = ex;
-        while (cause != null) {
-            if (cause instanceof SQLException sqlEx) {
-                String msg = sqlEx.getMessage();
-                if (msg != null) return msg;
-            }
-            cause = cause.getCause();
+        // Excepția 1: NO_ACTIVE_SUBSCRIPTION (trigger pe consultations)
+        if (msg.contains("NO_ACTIVE_SUBSCRIPTION")) {
+            String detail = msg.contains(":") ? msg.split(":", 2)[1].trim() : msg;
+            ApiError error = new ApiError(403, "Forbidden", detail);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
         }
-        return ex.getMessage() != null ? ex.getMessage() : "Eroare necunoscută";
+
+        // Excepția 2: GUARDIAN_ONLY_FOR_CHILD (trigger pe guardians)
+        if (msg.contains("GUARDIAN_ONLY_FOR_CHILD")) {
+            String detail = msg.contains(":") ? msg.split(":", 2)[1].trim() : msg;
+            ApiError error = new ApiError(400, "Bad Request", detail);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+
+        // Alte excepții DB notabile
+        if (msg.contains("MAX_SYMPTOMS_REACHED")) {
+            ApiError error = new ApiError(400, "Bad Request", "Maxim 3 simptome permise per consultație");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+        if (msg.contains("INVALID_STATUS_TRANSITION")) {
+            ApiError error = new ApiError(409, "Conflict", "Tranziție de status invalidă");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        }
+        if (msg.contains("NO_SLOTS_AVAILABLE")) {
+            ApiError error = new ApiError(409, "Conflict", "Nu există slot liber în următoarele 7 zile");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        }
+        if (msg.contains("EMERGENCY_NO_APPOINTMENT")) {
+            ApiError error = new ApiError(400, "Bad Request", "Cazurile de urgență sunt redirecționate automat, nu se programează");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+
+        ApiError error = new ApiError(500, "Database Error", "Eroare internă la baza de date");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    // DataIntegrityViolation — FK constraint, UNIQUE constraint etc.
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex) {
+        log.warn("DataIntegrityViolation: {}", ex.getMessage());
+        String msg = ex.getMessage() != null ? ex.getMessage() : "";
+
+        if (msg.contains("users_email_key") || msg.contains("duplicate key") && msg.contains("email")) {
+            ApiError error = new ApiError(409, "Conflict", "Există deja un cont cu această adresă de email");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        }
+        if (msg.contains("patients_cnp_key")) {
+            ApiError error = new ApiError(409, "Conflict", "CNP-ul este deja înregistrat în sistem");
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        }
+
+        // Prinde excepțiile PL/pgSQL care ajung ca DataIntegrityViolation
+        Throwable cause = ex.getCause();
+        if (cause != null && cause.getMessage() != null) {
+            String causeMsg = cause.getMessage();
+            if (causeMsg.contains("NO_ACTIVE_SUBSCRIPTION")) {
+                String detail = causeMsg.contains(":") ? causeMsg.split(":", 2)[1].trim() : causeMsg;
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ApiError(403, "Forbidden", detail));
+            }
+            if (causeMsg.contains("GUARDIAN_ONLY_FOR_CHILD")) {
+                String detail = causeMsg.contains(":") ? causeMsg.split(":", 2)[1].trim() : causeMsg;
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ApiError(400, "Bad Request", detail));
+            }
+        }
+
+        ApiError error = new ApiError(409, "Conflict", "Constrângere de integritate violată");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    // Validare @Valid pe DTO-uri
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
+        String firstError = ex.getBindingResult().getFieldErrors().stream()
+                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                .findFirst()
+                .orElse("Date invalide");
+        ApiError error = new ApiError(400, "Bad Request", firstError);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    // Login greșit
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiError> handleBadCredentials(BadCredentialsException ex) {
+        ApiError error = new ApiError(401, "Unauthorized", "Email sau parolă incorectă");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+    }
+
+    // Acces interzis (@PreAuthorize, etc.)
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ApiError> handleAuthorizationDenied(AuthorizationDeniedException ex) {
+        ApiError error = new ApiError(403, "Forbidden", "Nu ai permisiunea pentru această acțiune");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+    }
+
+    // Catch-all
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiError> handleGeneral(Exception ex) {
+        log.error("Eroare neașteptată: ", ex);
+        ApiError error = new ApiError(500, "Internal Server Error", "A apărut o eroare neașteptată");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 }

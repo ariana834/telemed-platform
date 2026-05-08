@@ -78,7 +78,6 @@ CREATE TABLE consultation_symptoms (
                                        CONSTRAINT uq_symptom_order   UNIQUE (consultation_id, order_index),
                                        CONSTRAINT chk_order_index    CHECK  (order_index BETWEEN 1 AND 3),
                                        CONSTRAINT chk_severity       CHECK  (severity IN ('MILD', 'MODERATE', 'SEVERE')),
-    -
                                        CONSTRAINT uq_symptom_name    UNIQUE (consultation_id, symptom_name)
 );
 

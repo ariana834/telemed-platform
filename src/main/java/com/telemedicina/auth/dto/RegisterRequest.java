@@ -1,4 +1,21 @@
 package com.telemedicina.auth.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 public class RegisterRequest {
+
+    @NotBlank(message = "Email-ul este obligatoriu")
+    @Email(message = "Format email invalid")
+    private String email;
+
+    @NotBlank(message = "Parola este obligatorie")
+    @Size(min = 8, message = "Parola trebuie să aibă minim 8 caractere")
+    private String password;
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 }

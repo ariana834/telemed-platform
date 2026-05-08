@@ -102,12 +102,12 @@
 			<version>${springdoc.version}</version>
 		</dependency>
 
-		<!-- ===== UTILITARE ===== -->
-		<!-- Lombok: elimină boilerplate (getteri, setteri, constructori) -->
+		
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<optional>true</optional>
+			<version>1.18.38</version>
+			<scope>provided</scope>
 		</dependency>
 
 		<!-- ===== TESTING ===== -->
@@ -129,15 +129,6 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
-				<configuration>
-					<!-- Excludem Lombok din JAR-ul final — nu e necesar la runtime -->
-					<excludes>
-						<exclude>
-							<groupId>org.projectlombok</groupId>
-							<artifactId>lombok</artifactId>
-						</exclude>
-					</excludes>
-				</configuration>
 			</plugin>
 		</plugins>
 	</build>

@@ -1,3 +1,19 @@
+-- Reset secvente pentru seed data reproductibil
+-- Reset dinamic al tuturor secventelor - sigur indiferent de naming
+DO $$
+DECLARE
+seq RECORD;
+BEGIN
+FOR seq IN
+SELECT sequence_name
+FROM information_schema.sequences
+WHERE sequence_schema = 'public'
+    LOOP
+        EXECUTE 'ALTER SEQUENCE public.' || seq.sequence_name || ' RESTART WITH 1';
+END LOOP;
+END $$;
+
+
 -- Date de test realiste pentru demonstrarea functionalitatii sistemului.
 -- Dezactivez triggerele pentru a putea insera date in stari finale
 -- fara a parcurge intregul flux (ex: consultatii deja completate).
@@ -467,4 +483,4 @@ VALUES
  'Dupa masa.'),
 -- reteta 6 (otita copil)
 (6, 'Paracetamol sirop 240mg/5ml', '5ml',  'La 6-8 ore, la nevoie', 5,
- 'Doz
+ 'Doz')

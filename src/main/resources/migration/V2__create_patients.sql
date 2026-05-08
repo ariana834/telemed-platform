@@ -1,46 +1,42 @@
-
 CREATE TABLE patients (
                           id              BIGSERIAL PRIMARY KEY,
                           user_id         BIGINT       NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
                           first_name      VARCHAR(100) NOT NULL,
                           last_name       VARCHAR(100) NOT NULL,
                           birth_date      DATE         NOT NULL,
-                          age             INTEGER      GENERATED ALWAYS AS (
-                              DATE_PART('year', AGE(CURRENT_DATE, birth_date))::INTEGER
-) STORED,
-    age_category    age_category NOT NULL DEFAULT 'ADULT',
-    gender          gender       NOT NULL,
-    blood_type      VARCHAR(5),
-    phone           VARCHAR(20),
-    cnp             VARCHAR(13)  UNIQUE,
-    address         TEXT,
-    notes           TEXT,
-    is_guardian     BOOLEAN      NOT NULL DEFAULT FALSE,
-    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+                          age             INTEGER,
+                          age_category    age_category NOT NULL DEFAULT 'ADULT',
+                          gender          gender       NOT NULL,
+                          blood_type      VARCHAR(5),
+                          phone           VARCHAR(20),
+                          cnp             VARCHAR(13)  UNIQUE,
+                          address         TEXT,
+                          notes           TEXT,
+                          is_guardian     BOOLEAN      NOT NULL DEFAULT FALSE,
+                          created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+                          updated_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT chk_birth_date   CHECK (birth_date <= CURRENT_DATE),
-    CONSTRAINT chk_blood_type   CHECK (blood_type IN ('A+','A-','B+','B-','AB+','AB-','O+','O-')),
-    CONSTRAINT chk_cnp_length   CHECK (cnp IS NULL OR LENGTH(cnp) = 13),
-    CONSTRAINT chk_phone_format CHECK (phone IS NULL OR phone ~ '^\+?[0-9\s\-]{7,20}$')
-);
+                          CONSTRAINT chk_birth_date   CHECK (birth_date <= CURRENT_DATE),
+                          CONSTRAINT chk_blood_type   CHECK (blood_type IN ('A+','A-','B+','B-','AB+','AB-','O+','O-')),
+                          CONSTRAINT chk_cnp_length   CHECK (cnp IS NULL OR LENGTH(cnp) = 13),
+                          CONSTRAINT chk_phone_format CHECK (phone IS NULL OR phone ~ '^\+?[0-9\s\-]{7,20}$')
+    );
 
 CREATE INDEX idx_patients_user_id   ON patients(user_id);
 CREATE INDEX idx_patients_cnp       ON patients(cnp);
 CREATE INDEX idx_patients_last_name ON patients(last_name);
 
--- updated_at auto
 CREATE TRIGGER trg_patients_updated_at
     BEFORE UPDATE ON patients
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- trigger : calculeaza automat age_category dupa birth_date
 CREATE OR REPLACE FUNCTION calculate_age_category()
 RETURNS TRIGGER AS $$
 DECLARE
 v_age INTEGER;
 BEGIN
     v_age := DATE_PART('year', AGE(CURRENT_DATE, NEW.birth_date))::INTEGER;
+    NEW.age := v_age;
 
     IF v_age < 18 THEN
         NEW.age_category := 'CHILD';
@@ -70,18 +66,12 @@ CREATE TABLE guardians (
                            created_at          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
 
                            CONSTRAINT chk_relationship CHECK (relationship IN ('PARENT', 'LEGAL_GUARDIAN', 'GRANDPARENT', 'OTHER')),
-                           CONSTRAINT chk_guardian_phone CHECK (phone IS NULL OR phone ~ '^\+?[0-9\s\-]{7,20}$'),
-    -- Un tutore nu poate fi propriul sau pacient
-    CONSTRAINT chk_guardian_not_patient CHECK (guardian_user_id != (
-        SELECT user_id FROM patients WHERE id = patient_id
-    ))
-);
+                           CONSTRAINT chk_guardian_phone CHECK (phone IS NULL OR phone ~ '^\+?[0-9\s\-]{7,20}$')
+    );
 
 CREATE INDEX idx_guardians_patient_id       ON guardians(patient_id);
 CREATE INDEX idx_guardians_guardian_user_id ON guardians(guardian_user_id);
 
-
--- trigger: verifica ca un guardian poate fi adaugat doar daca pacientul este copil (age_category = CHILD)
 CREATE OR REPLACE FUNCTION validate_guardian_for_child()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -95,7 +85,6 @@ IF v_age_category != 'CHILD' THEN
         RAISE EXCEPTION 'GUARDIAN_ONLY_FOR_CHILD: Cannot assign guardian to non-child patient (id: %)', NEW.patient_id;
 END IF;
 
-    -- Marcheaza pacientul ca avand tutore
 UPDATE patients SET is_guardian = TRUE WHERE id = NEW.patient_id;
 
 RETURN NEW;
@@ -118,7 +107,6 @@ CREATE TABLE chronic_conditions (
 
                                     CONSTRAINT chk_severity       CHECK (severity IN ('MILD', 'MODERATE', 'SEVERE')),
                                     CONSTRAINT chk_diagnosed_date CHECK (diagnosed_date IS NULL OR diagnosed_date <= CURRENT_DATE),
-    -- Un pacient nu poate avea acelasi diagnostic de doua ori activ
                                     CONSTRAINT uq_active_condition UNIQUE (patient_id, condition_name, is_active)
 );
 

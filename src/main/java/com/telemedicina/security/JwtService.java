@@ -2,7 +2,6 @@ package com.telemedicina.security;
 
 import com.telemedicina.shared.config.JwtConfig;
 import io.jsonwebtoken.*;
-import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,17 +10,10 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.util.Date;
 
-/**
- * Serviciu responsabil de tot ce ține de JWT:
- * - generarea token-ului după login
- * - validarea token-ului la fiecare request
- * - extragerea email-ului din token
- */
 @Service
 public class JwtService {
 
     private static final Logger log = LoggerFactory.getLogger(JwtService.class);
-
     private final JwtConfig jwtConfig;
 
     public JwtService(JwtConfig jwtConfig) {
@@ -29,15 +21,12 @@ public class JwtService {
     }
 
     public String generateToken(Long userId, String email, String role) {
-        Date now = new Date();
-        Date expiry = new Date(now.getTime() + jwtConfig.getExpirationMs());
-
         return Jwts.builder()
                 .subject(email)
                 .claim("userId", userId)
                 .claim("role", role)
-                .issuedAt(now)
-                .expiration(expiry)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + jwtConfig.getExpirationMs()))
                 .signWith(getSigningKey())
                 .compact();
     }
@@ -54,10 +43,6 @@ public class JwtService {
         return (String) parseClaims(token).get("role");
     }
 
-    /**
-     * Validează token-ul complet: semnătură + expirare + format.
-     * Returnează true dacă e valid, false altfel (nu aruncă excepție).
-     */
     public boolean isTokenValid(String token) {
         try {
             parseClaims(token);
@@ -85,7 +70,6 @@ public class JwtService {
     }
 
     private SecretKey getSigningKey() {
-        // Dacă secretul nu e base64, îl convertim direct din bytes
         byte[] keyBytes = jwtConfig.getSecret().getBytes();
         return Keys.hmacShaKeyFor(keyBytes);
     }
