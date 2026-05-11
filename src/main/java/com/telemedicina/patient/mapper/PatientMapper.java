@@ -35,7 +35,8 @@ public class PatientMapper {
         var bd = rs.getDate("birth_date");
         if (bd != null) p.setBirthDate(bd.toLocalDate());
 
-        p.setAge(rs.getObject("age", Integer.class));
+        int age = rs.getInt("age");
+        p.setAge(rs.wasNull() ? null : age);
         p.setAgeCategory(rs.getString("age_category"));
         p.setGender(rs.getString("gender"));
         p.setBloodType(rs.getString("blood_type"));

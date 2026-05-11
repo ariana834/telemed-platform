@@ -4,7 +4,6 @@ import com.telemedicina.security.JwtAuthFilter;
 import com.telemedicina.security.UserDetailsServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -43,11 +42,17 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfig.corsConfigurationSource()))
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Publice — register, login, swagger
-                        .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
-                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/index.html").permitAll()
-                        // Doar ADMIN poate crea doctori
-                        .requestMatchers(HttpMethod.POST, "/api/admin/**").hasRole("ADMIN")
+                        // Auth — fără token
+                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        // Swagger — fără token
+                        .requestMatchers(
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/index.html"
+                        ).permitAll()
+                        // Doar ADMIN poate accesa rutele de admin
+                        .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // Tot restul necesită autentificare
                         .anyRequest().authenticated()
                 )

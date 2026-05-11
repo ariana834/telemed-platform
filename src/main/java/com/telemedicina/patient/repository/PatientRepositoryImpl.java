@@ -17,15 +17,6 @@ import java.sql.PreparedStatement;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Acces la baza de date pentru tot ce ține de pacienți.
- * Nu există ORM — fiecare query e SQL explicit.
- *
- * Câteva note despre casting-ul PostgreSQL:
- * - `?::gender`       — cast explicit la tipul ENUM definit în DB
- * - `age` și `age_category` nu apar în INSERT — sunt calculate de DB
- * - TIMESTAMPTZ se mapează automat la OffsetDateTime prin driverul JDBC
- */
 @Repository
 public class PatientRepositoryImpl implements PatientRepository {
 
@@ -36,13 +27,8 @@ public class PatientRepositoryImpl implements PatientRepository {
         this.jdbc = jdbc;
         this.mapper = mapper;
     }
-
-    // ─── Patient ──────────────────────────────────────────────────────────────
-
     @Override
     public Long createPatient(Long userId, PatientRequest req) {
-        // age și age_category sunt omise intenționat — DB-ul le calculează automat
-        // prin coloana GENERATED ALWAYS AS și triggerul trg_calculate_age_category
         String sql = """
                 INSERT INTO patients (user_id, first_name, last_name, birth_date,
                                       gender, blood_type, phone, cnp, address)
@@ -58,7 +44,7 @@ public class PatientRepositoryImpl implements PatientRepository {
             ps.setString(3, req.getLastName());
             ps.setDate(4, Date.valueOf(req.getBirthDate()));
             ps.setString(5, req.getGender());
-            ps.setString(6, req.getBloodType());    // poate fi null — JDBC gestionează
+            ps.setString(6, req.getBloodType());
             ps.setString(7, req.getPhone());
             ps.setString(8, req.getCnp());
             ps.setString(9, req.getAddress());

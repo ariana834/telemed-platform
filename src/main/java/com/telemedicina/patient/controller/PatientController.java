@@ -19,17 +19,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Toate endpoint-urile sunt sub /api/v1/patients.
- *
- * @AuthenticationPrincipal CustomUserDetails userDetails
- * — Spring Security injectează automat userul din JWT.
- * Folosim userDetails.getUserId() ca să nu acceptăm niciodată userId din body
- * (un user nu poate acționa în numele altui user).
- *
- * @PreAuthorize("hasRole('PATIENT')") — blochează accesul dacă rolul din JWT
- * nu e PATIENT. Doctori și admini nu pot crea profiluri de pacient.
- */
 @RestController
 @RequestMapping("/api/v1/patients")
 @Tag(name = "Pacienți", description = "Managementul profilului de pacient")
@@ -40,8 +29,6 @@ public class PatientController {
     public PatientController(PatientService patientService) {
         this.patientService = patientService;
     }
-
-    // ─── Profil ───────────────────────────────────────────────────────────────
 
     @PostMapping("/profile")
     @PreAuthorize("hasRole('PATIENT')")
@@ -79,8 +66,6 @@ public class PatientController {
                 patientService.updateProfile(userDetails.getUserId(), request));
     }
 
-    // ─── Guardian ─────────────────────────────────────────────────────────────
-
     @PostMapping("/{patientId}/guardian")
     @PreAuthorize("hasRole('PATIENT')")
     @Operation(summary = "Adaugă tutore pentru un copil",
@@ -105,8 +90,6 @@ public class PatientController {
 
         return ResponseEntity.ok(patientService.getGuardian(patientId));
     }
-
-    // ─── Afecțiuni cronice ────────────────────────────────────────────────────
 
     @PostMapping("/chronic-conditions")
     @PreAuthorize("hasRole('PATIENT')")

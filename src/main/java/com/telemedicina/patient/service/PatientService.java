@@ -14,10 +14,8 @@ public interface PatientService {
     PatientResponse getProfile(Long userId);
     PatientResponse updateProfile(Long userId, PatientRequest request);
 
-
     GuardianResponse addGuardian(Long patientId, Long guardianUserId, GuardianRequest request);
     GuardianResponse getGuardian(Long patientId);
-
 
     ChronicConditionResponse addChronicCondition(Long userId, ChronicConditionRequest request);
     List<ChronicConditionResponse> getActiveConditions(Long userId);
