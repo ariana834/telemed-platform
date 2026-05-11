@@ -6,7 +6,6 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.sql.PreparedStatement;
-import java.sql.Statement;
 
 @Repository
 public class AuthRepositoryImpl implements AuthRepository {
@@ -27,7 +26,7 @@ public class AuthRepositoryImpl implements AuthRepository {
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbc.update(conn -> {
-            PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+            PreparedStatement ps = conn.prepareStatement(sql, new String[]{"id"});
             ps.setString(1, email);
             ps.setString(2, passwordHash);
             ps.setString(3, role);
