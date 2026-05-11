@@ -1,6 +1,11 @@
 package com.telemedicina.patient.service;
 
-import com.telemedicina.patient.dto.*;
+import com.telemedicina.patient.dto.request.ChronicConditionRequest;
+import com.telemedicina.patient.dto.request.GuardianRequest;
+import com.telemedicina.patient.dto.request.PatientRequest;
+import com.telemedicina.patient.dto.response.ChronicConditionResponse;
+import com.telemedicina.patient.dto.response.GuardianResponse;
+import com.telemedicina.patient.dto.response.PatientResponse;
 
 import java.util.List;
 

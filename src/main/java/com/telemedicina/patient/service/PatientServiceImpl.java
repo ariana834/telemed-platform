@@ -1,9 +1,13 @@
 package com.telemedicina.patient.service;
 
-import com.telemedicina.patient.dto.*;
+import com.telemedicina.patient.dto.request.ChronicConditionRequest;
+import com.telemedicina.patient.dto.request.GuardianRequest;
+import com.telemedicina.patient.dto.request.PatientRequest;
+import com.telemedicina.patient.dto.response.ChronicConditionResponse;
+import com.telemedicina.patient.dto.response.GuardianResponse;
+import com.telemedicina.patient.dto.response.PatientResponse;
 import com.telemedicina.patient.mapper.PatientMapper;
 import com.telemedicina.patient.model.ChronicCondition;
-import com.telemedicina.patient.model.Guardian;
 import com.telemedicina.patient.model.Patient;
 import com.telemedicina.patient.repository.PatientRepository;
 import com.telemedicina.shared.exception.ApiException;
@@ -39,8 +43,8 @@ public class PatientServiceImpl implements PatientService {
     public PatientResponse createProfile(Long userId, PatientRequest request) {
         // Un user poate avea un singur profil de pacient
         if (patientRepository.existsByUserId(userId)) {
-            throw new ApiException(HttpStatus.CONFLICT,
-                    "Există deja un profil de pacient pentru acest cont");
+            throw new ApiException(
+                    "Există deja un profil de pacient pentru acest cont", HttpStatus.CONFLICT);
         }
 
         Long patientId = patientRepository.createPatient(userId, request);
@@ -48,24 +52,23 @@ public class PatientServiceImpl implements PatientService {
         // Citim profilul creat ca să avem și age + age_category calculate de DB
         return patientRepository.findById(patientId)
                 .map(patientMapper::toResponse)
-                .orElseThrow(() -> new ApiException(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "Eroare la crearea profilului"));
+                .orElseThrow(() -> new ApiException(
+                        "Eroare la crearea profilului", HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
     @Override
     public PatientResponse getProfile(Long userId) {
         Patient patient = patientRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Nu există un profil de pacient pentru acest cont"));
+                .orElseThrow(() -> new ApiException(
+                        "Nu există un profil de pacient pentru acest cont", HttpStatus.NOT_FOUND));
         return patientMapper.toResponse(patient);
     }
 
     @Override
     public PatientResponse updateProfile(Long userId, PatientRequest request) {
-        // Verificăm că profilul există înainte de update
         if (!patientRepository.existsByUserId(userId)) {
-            throw new ResourceNotFoundException(
-                    "Nu există un profil de pacient pentru acest cont");
+            throw new ApiException(
+                    "Nu există un profil de pacient pentru acest cont", HttpStatus.NOT_FOUND);
         }
 
         patientRepository.updatePatient(userId, request);
@@ -81,21 +84,13 @@ public class PatientServiceImpl implements PatientService {
     @Override
     public GuardianResponse addGuardian(Long patientId, Long guardianUserId,
                                         GuardianRequest request) {
-        // Verificăm că pacientul (copilul) există
+        // ResourceNotFoundException(resource, id) → "Pacient cu id X nu a fost găsit"
         patientRepository.findById(patientId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Pacientul cu id " + patientId + " nu a fost găsit"));
+                .orElseThrow(() -> new ResourceNotFoundException("Pacient", patientId));
 
         // Triggerul trg_validate_guardian din DB verifică că e CHILD
         // Dacă nu e, aruncă GUARDIAN_ONLY_FOR_CHILD → prins în GlobalExceptionHandler → 400
-        Long guardianId = patientRepository.createGuardian(patientId, guardianUserId, request);
-
-        // Marcăm pacientul-tutore că are un copil în sistem
-        // (is_guardian = TRUE pe profilul propriu al tutorelui)
-        patientRepository.findByUserId(guardianUserId).ifPresent(p -> {
-            // Actualizare simplă — în cazuri reale ai un updateIsGuardian separat
-            // Aici îl facem inline cu un update direct
-        });
+        patientRepository.createGuardian(patientId, guardianUserId, request);
 
         return patientRepository.findGuardianByPatientId(patientId)
                 .map(patientMapper::toGuardianResponse)
@@ -106,8 +101,9 @@ public class PatientServiceImpl implements PatientService {
     public GuardianResponse getGuardian(Long patientId) {
         return patientRepository.findGuardianByPatientId(patientId)
                 .map(patientMapper::toGuardianResponse)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Nu există tutore înregistrat pentru pacientul " + patientId));
+                .orElseThrow(() -> new ApiException(
+                        "Nu există tutore înregistrat pentru pacientul cu id " + patientId,
+                        HttpStatus.NOT_FOUND));
     }
 
     // ─── Chronic Conditions ───────────────────────────────────────────────────
@@ -116,13 +112,12 @@ public class PatientServiceImpl implements PatientService {
     public ChronicConditionResponse addChronicCondition(Long userId,
                                                         ChronicConditionRequest request) {
         Patient patient = patientRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Creează mai întâi un profil de pacient"));
+                .orElseThrow(() -> new ApiException(
+                        "Creează mai întâi un profil de pacient", HttpStatus.NOT_FOUND));
 
         // Constrângerea uq_active_condition din DB previne duplicate active
         // DataIntegrityViolationException e prinsă în GlobalExceptionHandler → 409
-        Long conditionId = patientRepository.createChronicCondition(
-                patient.getId(), request);
+        Long conditionId = patientRepository.createChronicCondition(patient.getId(), request);
 
         List<ChronicCondition> conditions =
                 patientRepository.findActiveConditionsByPatientId(patient.getId());
@@ -137,8 +132,8 @@ public class PatientServiceImpl implements PatientService {
     @Override
     public List<ChronicConditionResponse> getActiveConditions(Long userId) {
         Patient patient = patientRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Nu există un profil de pacient pentru acest cont"));
+                .orElseThrow(() -> new ApiException(
+                        "Nu există un profil de pacient pentru acest cont", HttpStatus.NOT_FOUND));
 
         return patientRepository.findActiveConditionsByPatientId(patient.getId())
                 .stream()
@@ -149,8 +144,8 @@ public class PatientServiceImpl implements PatientService {
     @Override
     public void deactivateCondition(Long conditionId, Long userId) {
         Patient patient = patientRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Nu există un profil de pacient pentru acest cont"));
+                .orElseThrow(() -> new ApiException(
+                        "Nu există un profil de pacient pentru acest cont", HttpStatus.NOT_FOUND));
 
         // patientId e inclus în query ca să nu poți dezactiva afecțiunea altcuiva
         patientRepository.deactivateCondition(conditionId, patient.getId());

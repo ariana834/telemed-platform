@@ -1,6 +1,8 @@
 package com.telemedicina.patient.mapper;
 
-import com.telemedicina.patient.dto.*;
+import com.telemedicina.patient.dto.response.ChronicConditionResponse;
+import com.telemedicina.patient.dto.response.GuardianResponse;
+import com.telemedicina.patient.dto.response.PatientResponse;
 import com.telemedicina.patient.model.ChronicCondition;
 import com.telemedicina.patient.model.Guardian;
 import com.telemedicina.patient.model.Patient;

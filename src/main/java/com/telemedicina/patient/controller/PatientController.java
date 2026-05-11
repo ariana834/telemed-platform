@@ -1,6 +1,11 @@
 package com.telemedicina.patient.controller;
 
-import com.telemedicina.patient.dto.*;
+import com.telemedicina.patient.dto.request.ChronicConditionRequest;
+import com.telemedicina.patient.dto.request.GuardianRequest;
+import com.telemedicina.patient.dto.request.PatientRequest;
+import com.telemedicina.patient.dto.response.ChronicConditionResponse;
+import com.telemedicina.patient.dto.response.GuardianResponse;
+import com.telemedicina.patient.dto.response.PatientResponse;
 import com.telemedicina.patient.service.PatientService;
 import com.telemedicina.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +19,17 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * Toate endpoint-urile sunt sub /api/v1/patients.
+ *
+ * @AuthenticationPrincipal CustomUserDetails userDetails
+ * — Spring Security injectează automat userul din JWT.
+ * Folosim userDetails.getUserId() ca să nu acceptăm niciodată userId din body
+ * (un user nu poate acționa în numele altui user).
+ *
+ * @PreAuthorize("hasRole('PATIENT')") — blochează accesul dacă rolul din JWT
+ * nu e PATIENT. Doctori și admini nu pot crea profiluri de pacient.
+ */
 @RestController
 @RequestMapping("/api/v1/patients")
 @Tag(name = "Pacienți", description = "Managementul profilului de pacient")
@@ -25,6 +41,8 @@ public class PatientController {
         this.patientService = patientService;
     }
 
+    // ─── Profil ───────────────────────────────────────────────────────────────
+
     @PostMapping("/profile")
     @PreAuthorize("hasRole('PATIENT')")
     @Operation(summary = "Creare profil pacient",
@@ -35,7 +53,7 @@ public class PatientController {
             @Valid @RequestBody PatientRequest request) {
 
         PatientResponse response = patientService.createProfile(
-                userDetails.getId(), request);
+                userDetails.getUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -46,7 +64,7 @@ public class PatientController {
     public ResponseEntity<PatientResponse> getProfile(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        return ResponseEntity.ok(patientService.getProfile(userDetails.getId()));
+        return ResponseEntity.ok(patientService.getProfile(userDetails.getUserId()));
     }
 
     @PutMapping("/profile")
@@ -58,7 +76,7 @@ public class PatientController {
             @Valid @RequestBody PatientRequest request) {
 
         return ResponseEntity.ok(
-                patientService.updateProfile(userDetails.getId(), request));
+                patientService.updateProfile(userDetails.getUserId(), request));
     }
 
     // ─── Guardian ─────────────────────────────────────────────────────────────
@@ -75,7 +93,7 @@ public class PatientController {
             @Valid @RequestBody GuardianRequest request) {
 
         GuardianResponse response = patientService.addGuardian(
-                patientId, userDetails.getId(), request);
+                patientId, userDetails.getUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -101,7 +119,7 @@ public class PatientController {
             @Valid @RequestBody ChronicConditionRequest request) {
 
         ChronicConditionResponse response = patientService.addChronicCondition(
-                userDetails.getId(), request);
+                userDetails.getUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -112,7 +130,7 @@ public class PatientController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         return ResponseEntity.ok(
-                patientService.getActiveConditions(userDetails.getId()));
+                patientService.getActiveConditions(userDetails.getUserId()));
     }
 
     @DeleteMapping("/chronic-conditions/{conditionId}")
@@ -124,7 +142,7 @@ public class PatientController {
             @PathVariable Long conditionId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
-        patientService.deactivateCondition(conditionId, userDetails.getId());
+        patientService.deactivateCondition(conditionId, userDetails.getUserId());
         return ResponseEntity.noContent().build();
     }
 }

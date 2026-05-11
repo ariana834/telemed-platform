@@ -1,8 +1,8 @@
 package com.telemedicina.patient.repository;
 
-import com.telemedicina.patient.dto.ChronicConditionRequest;
-import com.telemedicina.patient.dto.GuardianRequest;
-import com.telemedicina.patient.dto.PatientRequest;
+import com.telemedicina.patient.dto.request.ChronicConditionRequest;
+import com.telemedicina.patient.dto.request.GuardianRequest;
+import com.telemedicina.patient.dto.request.PatientRequest;
 import com.telemedicina.patient.mapper.PatientMapper;
 import com.telemedicina.patient.model.ChronicCondition;
 import com.telemedicina.patient.model.Guardian;

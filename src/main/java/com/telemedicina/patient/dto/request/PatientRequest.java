@@ -1,10 +1,13 @@
-package com.telemedicina.patient.dto;
+package com.telemedicina.patient.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.time.LocalDate;
 
@@ -14,6 +17,9 @@ import java.time.LocalDate;
  * CHECK constraints, dar e mai eficient să respingem datele proaste înainte
  * să ajungă la bază.
  */
+@Getter
+@Setter
+@NoArgsConstructor
 public class PatientRequest {
 
     @NotBlank(message = "Prenumele este obligatoriu")
@@ -32,7 +38,7 @@ public class PatientRequest {
     @Pattern(regexp = "MALE|FEMALE|OTHER", message = "Gen invalid. Valori acceptate: MALE, FEMALE, OTHER")
     private String gender;
 
-    // Opționale — nu toți pacienții le completează la înregistrare
+    //optionale
     @Pattern(regexp = "A\\+|A-|B\\+|B-|AB\\+|AB-|O\\+|O-",
             message = "Grupă sanguină invalidă")
     private String bloodType;
@@ -45,30 +51,4 @@ public class PatientRequest {
     private String cnp;
 
     private String address;
-
-    public PatientRequest() {}
-
-    public String getFirstName() { return firstName; }
-    public void setFirstName(String firstName) { this.firstName = firstName; }
-
-    public String getLastName() { return lastName; }
-    public void setLastName(String lastName) { this.lastName = lastName; }
-
-    public LocalDate getBirthDate() { return birthDate; }
-    public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
-
-    public String getGender() { return gender; }
-    public void setGender(String gender) { this.gender = gender; }
-
-    public String getBloodType() { return bloodType; }
-    public void setBloodType(String bloodType) { this.bloodType = bloodType; }
-
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
-
-    public String getCnp() { return cnp; }
-    public void setCnp(String cnp) { this.cnp = cnp; }
-
-    public String getAddress() { return address; }
-    public void setAddress(String address) { this.address = address; }
 }
