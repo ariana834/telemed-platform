@@ -23,4 +23,5 @@ public interface PatientRepository {
     Long createChronicCondition(Long patientId, ChronicConditionRequest request);
     List<ChronicCondition> findActiveConditionsByPatientId(Long patientId);
     void deactivateCondition(Long conditionId, Long patientId);
+    Optional<Long> findPatientIdByConsultationId(Long consultationId);
 }

@@ -207,12 +207,20 @@ public class PatientRepositoryImpl implements PatientRepository {
 
     @Override
     public void deactivateCondition(Long conditionId, Long patientId) {
-        // Nu ștergem — marcăm ca inactivă (soft delete medical)
-        // Istoricul medical trebuie păstrat conform cerințelor sistemului
         jdbc.update("""
                 UPDATE chronic_conditions
                 SET is_active = FALSE
                 WHERE id = ? AND patient_id = ?
                 """, conditionId, patientId);
+    }
+
+    @Override
+    public Optional<Long> findPatientIdByConsultationId(Long consultationId) {
+        List<Long> result = jdbc.query(
+                "SELECT patient_id FROM consultations WHERE id = ?",
+                (rs, rowNum) -> rs.getLong("patient_id"),
+                consultationId
+        );
+        return result.isEmpty() ? Optional.empty() : Optional.of(result.get(0));
     }
 }

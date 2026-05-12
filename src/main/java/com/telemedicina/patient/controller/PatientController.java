@@ -68,7 +68,7 @@ public class PatientController {
 
     @PostMapping("/{patientId}/guardian")
     @PreAuthorize("hasRole('PATIENT')")
-    @Operation(summary = "Adaugă tutore pentru un copil",
+    @Operation(summary = "Adauga tutore pentru un copil",
             description = "Userul curent devine tutorele pacientului copil specificat. " +
                     "DB-ul validează că patientId aparține unui pacient CHILD — " +
                     "altfel aruncă GUARDIAN_ONLY_FOR_CHILD (400).")

@@ -1,17 +1,15 @@
-package com.telemedicina.prescription.model;
+package com.telemedicina.prescription.dto.response;
 
-import lombok.AllArgsConstructor;
+import com.telemedicina.prescription.model.ReferralPriority;
+import com.telemedicina.prescription.model.ReferralType;
 import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 
 @Data
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class Referral {
+public class ReferralResponse {
     private Long id;
     private Long consultationId;
     private Long patientId;

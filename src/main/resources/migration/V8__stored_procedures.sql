@@ -1,4 +1,3 @@
-
 -- Contine algoritmii principali implementati:
 -- 1. generate_medical_form     - genereaza fisa medicala bazat pe simptome + istoric
 -- 2. compute_preliminary_diagnosis - calculeaza diagnosticul prin sistem de scoruri
@@ -130,6 +129,10 @@ VALUES
      v_order_idx, TRUE);
 v_order_idx := v_order_idx + 1;
 
+    -- ================================================================
+    -- REGULA 2: FEBRA + DURERI ABDOMINALE + VARSATURI
+    -- potential toxiinfectie alimentara sau gripa digestiva
+    -- ================================================================
     IF v_has_fever AND v_has_abdominal AND v_has_vomiting THEN
 
         INSERT INTO medical_form_questions
@@ -282,13 +285,6 @@ $$ LANGUAGE plpgsql;
 -- 2. CALCUL DIAGNOSTIC PRELIMINAR
 -- ================================================================
 
--- folosesc un sistem de scoruri pentru fiecare diagnostic posibil.
--- fiecare simptom si raspuns la fisa adauga puncte diferitelor diagnostice.
--- diagnosticul cu cel mai mare scor devine diagnosticul principal,
--- al doilea ca scor devine diagnosticul alternativ.
--- abordarea cu scoruri este mai flexibila decat reguli if/else stricte
--- si permite un grad de incertitudine (confidence_score).
-
 CREATE OR REPLACE FUNCTION compute_preliminary_diagnosis(p_consultation_id BIGINT)
 RETURNS VOID AS $$
 DECLARE
@@ -297,7 +293,6 @@ v_patient_id       BIGINT;
     v_complexity       complexity_level;
     v_symptoms_text    TEXT;
 
-    -- scorurile pentru fiecare diagnostic posibil
     v_score_gripa           INTEGER := 0;
     v_score_viroza          INTEGER := 0;
     v_score_toxiinfectie    INTEGER := 0;
@@ -305,7 +300,6 @@ v_patient_id       BIGINT;
     v_score_otita           INTEGER := 0;
     v_score_gastroenterita  INTEGER := 0;
 
-    -- raspunsuri cheie extrase din fisa
     v_had_bad_food     BOOLEAN := FALSE;
     v_others_sick      BOOLEAN := FALSE;
     v_high_fever       BOOLEAN := FALSE;
@@ -362,75 +356,78 @@ WHERE a.consultation_id = p_consultation_id;
 
 -- ================================================================
 -- CALCUL SCORURI
--- fiecare factor adauga o anumita pondere la diagnosticul corespunzator
 -- ================================================================
 
--- GRIPA: febra mare + dureri musculare + contagiozitate
-IF v_symptoms_text ILIKE '%febr%'    THEN v_score_gripa := v_score_gripa + 15; END IF;
-    IF v_high_fever                       THEN v_score_gripa := v_score_gripa + 20; END IF;
-    IF v_muscle_pain                      THEN v_score_gripa := v_score_gripa + 25; END IF;
-    IF v_symptoms_text ILIKE '%cap%'     THEN v_score_gripa := v_score_gripa + 10; END IF;
-    IF v_others_sick                      THEN v_score_gripa := v_score_gripa + 15; END IF;
-    IF v_symptoms_text ILIKE '%oboseala%' THEN v_score_gripa := v_score_gripa + 10; END IF;
+IF v_symptoms_text ILIKE '%febr%'     THEN v_score_gripa := v_score_gripa + 15; END IF;
+    IF v_high_fever                        THEN v_score_gripa := v_score_gripa + 20; END IF;
+    IF v_muscle_pain                       THEN v_score_gripa := v_score_gripa + 25; END IF;
+    IF v_symptoms_text ILIKE '%cap%'      THEN v_score_gripa := v_score_gripa + 10; END IF;
+    IF v_others_sick                       THEN v_score_gripa := v_score_gripa + 15; END IF;
+    IF v_symptoms_text ILIKE '%oboseala%'  THEN v_score_gripa := v_score_gripa + 10; END IF;
 
-    -- VIROZA: febra mica + simptome respiratorii usoare
     IF v_symptoms_text ILIKE '%febr%' AND NOT v_high_fever THEN v_score_viroza := v_score_viroza + 25; END IF;
     IF v_symptoms_text ILIKE '%tuse%'  THEN v_score_viroza := v_score_viroza + 20; END IF;
     IF v_symptoms_text ILIKE '%nas%'   THEN v_score_viroza := v_score_viroza + 15; END IF;
     IF v_symptoms_text ILIKE '%gat%'   THEN v_score_viroza := v_score_viroza + 10; END IF;
 
-    -- TOXIINFECTIE: alimente + varsaturi + diaree
-    IF v_had_bad_food                       THEN v_score_toxiinfectie := v_score_toxiinfectie + 35; END IF;
-    IF v_symptoms_text ILIKE '%varsatur%'   THEN v_score_toxiinfectie := v_score_toxiinfectie + 20; END IF;
-    IF v_has_diarrhea                       THEN v_score_toxiinfectie := v_score_toxiinfectie + 20; END IF;
-    IF v_others_sick                        THEN v_score_toxiinfectie := v_score_toxiinfectie + 15; END IF;
+    IF v_had_bad_food                      THEN v_score_toxiinfectie := v_score_toxiinfectie + 35; END IF;
+    IF v_symptoms_text ILIKE '%varsatur%'  THEN v_score_toxiinfectie := v_score_toxiinfectie + 20; END IF;
+    IF v_has_diarrhea                      THEN v_score_toxiinfectie := v_score_toxiinfectie + 20; END IF;
+    IF v_others_sick                       THEN v_score_toxiinfectie := v_score_toxiinfectie + 15; END IF;
 
-    -- GASTROENTERITA: varsaturi + dureri abdominale + febra medie
-    IF v_symptoms_text ILIKE '%abdomin%'    THEN v_score_gastroenterita := v_score_gastroenterita + 20; END IF;
-    IF v_symptoms_text ILIKE '%varsatur%'   THEN v_score_gastroenterita := v_score_gastroenterita + 20; END IF;
+    IF v_symptoms_text ILIKE '%abdomin%'   THEN v_score_gastroenterita := v_score_gastroenterita + 20; END IF;
+    IF v_symptoms_text ILIKE '%varsatur%'  THEN v_score_gastroenterita := v_score_gastroenterita + 20; END IF;
     IF v_symptoms_text ILIKE '%febr%' AND NOT v_high_fever THEN v_score_gastroenterita := v_score_gastroenterita + 15; END IF;
-    IF v_has_diarrhea                       THEN v_score_gastroenterita := v_score_gastroenterita + 10; END IF;
+    IF v_has_diarrhea                      THEN v_score_gastroenterita := v_score_gastroenterita + 10; END IF;
 
-    -- BRONSITA: tuse + durere in piept + posibil febra
-    IF v_symptoms_text ILIKE '%tuse%'       THEN v_score_bronsita := v_score_bronsita + 30; END IF;
-    IF v_symptoms_text ILIKE '%piept%'      THEN v_score_bronsita := v_score_bronsita + 25; END IF;
-    IF v_high_fever                          THEN v_score_bronsita := v_score_bronsita + 10; END IF;
+    IF v_symptoms_text ILIKE '%tuse%'      THEN v_score_bronsita := v_score_bronsita + 30; END IF;
+    IF v_symptoms_text ILIKE '%piept%'     THEN v_score_bronsita := v_score_bronsita + 25; END IF;
+    IF v_high_fever                         THEN v_score_bronsita := v_score_bronsita + 10; END IF;
 
-    -- OTITA: doar pentru copii cu durere de ureche si febra
     IF v_age_category = 'CHILD' THEN
-        IF v_ear_pain                        THEN v_score_otita := v_score_otita + 45; END IF;
-        IF v_symptoms_text ILIKE '%febr%'    THEN v_score_otita := v_score_otita + 20; END IF;
-        IF v_has_rash                        THEN v_score_otita := v_score_otita - 15; END IF;
+        IF v_ear_pain                       THEN v_score_otita := v_score_otita + 45; END IF;
+        IF v_symptoms_text ILIKE '%febr%'   THEN v_score_otita := v_score_otita + 20; END IF;
+        IF v_has_rash                       THEN v_score_otita := v_score_otita - 15; END IF;
 END IF;
 
     -- ================================================================
-    -- SELECTEZ TOP 2 DIAGNOSTICE CU SCORURI MAXIME
+    -- SELECTEZ TOP 2 DIAGNOSTICE
+    -- folosim tabel temporar in loc de CTE cu variabile PL/pgSQL
+    -- (variabilele nu sunt accesibile direct intr-un CTE in PostgreSQL)
     -- ================================================================
-WITH all_diagnoses AS (
-    SELECT * FROM (VALUES
-                       ('Gripa',                   'J10', v_score_gripa),
-                       ('Viroza respiratorie',     'J06', v_score_viroza),
-                       ('Toxiinfectie alimentara', 'A05', v_score_toxiinfectie),
-                       ('Gastroenterita acuta',    'A09', v_score_gastroenterita),
-                       ('Bronsita acuta',          'J20', v_score_bronsita),
-                       ('Otita medie acuta',       'H66', v_score_otita)
-                  ) AS t(diag_name, icd, score)
-    WHERE score > 20
-    ORDER BY score DESC
-    LIMIT 2
-    ),
-    ranked AS (
-SELECT *, ROW_NUMBER() OVER (ORDER BY score DESC) AS rn FROM all_diagnoses
-    )
-SELECT
-    MAX(CASE WHEN rn = 1 THEN diag_name END),
-    MAX(CASE WHEN rn = 1 THEN icd END),
-    MAX(CASE WHEN rn = 1 THEN score END),
-    MAX(CASE WHEN rn = 2 THEN diag_name END),
-    MAX(CASE WHEN rn = 2 THEN icd END),
-    MAX(CASE WHEN rn = 2 THEN score END)
-INTO v_diagnosis1, v_icd1, v_score1, v_diagnosis2, v_icd2, v_score2
-FROM ranked;
+
+    CREATE TEMP TABLE IF NOT EXISTS _temp_diag_scores (
+        diag_name VARCHAR(255),
+        icd       VARCHAR(10),
+        score     INTEGER
+    ) ON COMMIT DROP;
+
+DELETE FROM _temp_diag_scores;
+
+INSERT INTO _temp_diag_scores VALUES
+                                  ('Gripa',                   'J10', v_score_gripa),
+                                  ('Viroza respiratorie',     'J06', v_score_viroza),
+                                  ('Toxiinfectie alimentara', 'A05', v_score_toxiinfectie),
+                                  ('Gastroenterita acuta',    'A09', v_score_gastroenterita),
+                                  ('Bronsita acuta',          'J20', v_score_bronsita),
+                                  ('Otita medie acuta',       'H66', v_score_otita);
+
+-- primul diagnostic
+SELECT diag_name, icd, score
+INTO v_diagnosis1, v_icd1, v_score1
+FROM _temp_diag_scores
+WHERE score > 20
+ORDER BY score DESC
+    LIMIT 1;
+
+-- al doilea diagnostic
+SELECT diag_name, icd, score
+INTO v_diagnosis2, v_icd2, v_score2
+FROM _temp_diag_scores
+WHERE score > 20
+  AND diag_name != COALESCE(v_diagnosis1, '')
+ORDER BY score DESC
+    LIMIT 1;
 
 IF v_diagnosis1 IS NOT NULL THEN
         INSERT INTO diagnoses
@@ -472,14 +469,6 @@ $$ LANGUAGE plpgsql;
 -- 3. PROGRAMARE AUTOMATA
 -- ================================================================
 
--- acesta este algoritmul cel mai complex din sistem.
--- cauta primul slot liber iterand din 10 in 10 minute,
--- tinand cont de:
---   - programul saptamanal al fiecarui doctor
---   - programarile deja existente (fara overlap)
---   - durata consultatiei bazata pe complexitate
--- cauta in urmatoarele 7 zile, returneaza eroare daca nu gaseste nimic.
-
 CREATE OR REPLACE FUNCTION schedule_next_appointment(p_consultation_id BIGINT)
 RETURNS BIGINT AS $$
 DECLARE
@@ -506,8 +495,6 @@ IF v_complexity = 'EMERGENCY' THEN
         RAISE EXCEPTION 'EMERGENCY_NO_APPOINTMENT: Cazurile de urgenta nu se programeaza online';
 END IF;
 
-    -- durata variaza in functie de complexitate
-    -- SIMPLE = 10 min, MEDIUM = 20 min, COMPLEX = 30 min
     v_duration := CASE v_complexity
         WHEN 'SIMPLE'  THEN 10
         WHEN 'MEDIUM'  THEN 20
@@ -515,16 +502,13 @@ END IF;
         ELSE 20
 END;
 
-    -- incep cautarea de la urmatoarea ora intreaga dupa momentul curent
     v_search_from  := DATE_TRUNC('hour', NOW()) + INTERVAL '1 hour';
     v_search_limit := v_search_from + INTERVAL '7 days';
 
-    -- iterez prin timpi posibili din 10 in 10 minute
     WHILE v_search_from < v_search_limit AND NOT v_found LOOP
 
         v_day_of_week := (EXTRACT(ISODOW FROM v_search_from)::SMALLINT - 1);
 
-        -- pentru fiecare doctor care are program in momentul respectiv
 FOR r_doctor IN
 SELECT d.id AS doctor_id
 FROM doctors d
@@ -536,8 +520,6 @@ WHERE d.is_available = TRUE
               AND ds.end_time    >= (v_search_from + (v_duration || ' minutes')::INTERVAL)::TIME
 ORDER BY d.id
     LOOP
-    -- verific daca doctorul nu are alta programare in acest interval
-    -- folosesc tstzrange pentru overlap detection - mai elegant decat comparatii manuale
     IF NOT EXISTS (
     SELECT 1 FROM appointments
     WHERE doctor_id = r_doctor.doctor_id
@@ -586,12 +568,6 @@ $$ LANGUAGE plpgsql;
 -- 4. GENERARE RETETA AUTOMATA
 -- ================================================================
 
--- pentru cazurile simple sistemul poate genera o reteta fara interventia
--- unui doctor. important: folosim DOAR medicamente OTC (fara reteta),
--- fara antibiotice - conform cerintei de business.
--- daca diagnosticul nu se afla in lista de diagnostice simple
--- aruncam exceptie si pacientul este programat la un doctor real.
-
 CREATE OR REPLACE FUNCTION auto_generate_prescription(p_consultation_id BIGINT)
 RETURNS BIGINT AS $$
 DECLARE
@@ -601,7 +577,6 @@ v_patient_id        BIGINT;
     v_diagnosis_name    VARCHAR(255);
     v_prescription_id   BIGINT;
 
-    -- lista diagnosticelor care permit reteta automata
     v_simple_diagnoses  TEXT[] := ARRAY[
         'Viroza respiratorie',
         'Gripa',
@@ -620,7 +595,6 @@ IF v_complexity != 'SIMPLE' THEN
             v_complexity;
 END IF;
 
-    -- preiau diagnosticul cu cel mai mare confidence score
 SELECT id, diagnosis_name
 INTO v_diagnosis_id, v_diagnosis_name
 FROM diagnoses
@@ -641,7 +615,6 @@ VALUES
      NOW(), NOW() + INTERVAL '7 days', TRUE)
     RETURNING id INTO v_prescription_id;
 
--- adaug medicamentele OTC in functie de diagnostic
 IF v_diagnosis_name IN ('Viroza respiratorie', 'Gripa') THEN
         INSERT INTO prescription_medications
             (prescription_id, medication_name, dosage, frequency, duration_days, instructions)

@@ -39,13 +39,11 @@ public class ConsultationServiceImpl implements ConsultationService {
     public ConsultationResponse createConsultation(Long userId, String notes) {
         var patient = patientRepo.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pacient", userId));
-
         // DB-ul verifica abonamentul activ prin trigger - daca nu are, arunca NoActiveSubscriptionException
         Long id = consultationRepo.create(patient.getId(), notes);
 
         var consultation = consultationRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Consultatie", id));
-
         ConsultationResponse response = mapper.toResponse(consultation);
         response.setSymptomCount(0);
         return response;
@@ -79,12 +77,10 @@ public class ConsultationServiceImpl implements ConsultationService {
         if (c.getStatus() != ConsultationStatus.PENDING_FORM) {
             throw new ApiException("Nu mai poti adauga simptome - fisa a fost deja generata.", HttpStatus.BAD_REQUEST);
         }
-
         int currentCount = consultationRepo.countSymptoms(consultationId);
         if (currentCount >= 3) {
             throw new ApiException("Ai adaugat deja 3 simptome pentru aceasta consultatie.", HttpStatus.BAD_REQUEST);
         }
-
         // order_index = pozitia urmatoare (1, 2 sau 3)
         consultationRepo.addSymptom(
                 consultationId,
@@ -92,18 +88,14 @@ public class ConsultationServiceImpl implements ConsultationService {
                 request.getSeverity(),
                 currentCount + 1
         );
-
         // refetch pentru a vedea statusul actualizat de triggerele din DB
         var updated = consultationRepo.findById(consultationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Consultatie", consultationId));
-
         ConsultationResponse response = mapper.toResponse(updated);
         response.setSymptomCount(currentCount + 1);
-
         if (updated.getStatus() == ConsultationStatus.EMERGENCY_REDIRECT) {
             log.warn("Consultatie {} - redirectionata catre urgente!", consultationId);
         }
-
         return response;
     }
 
@@ -146,13 +138,10 @@ public class ConsultationServiceImpl implements ConsultationService {
     @Transactional
     public ConsultationDetailResponse computeDiagnosis(Long consultationId, Long userId) {
         var c = getAndVerifyOwnership(consultationId, userId);
-
         if (c.getStatus() != ConsultationStatus.FORM_COMPLETED) {
             throw new ApiException("Fisa nu este completa inca.", HttpStatus.BAD_REQUEST);
         }
-
         consultationRepo.computeDiagnosis(consultationId);
-
         return buildDetailResponse(
                 consultationRepo.findById(consultationId)
                         .orElseThrow(() -> new ResourceNotFoundException("Consultatie", consultationId))
