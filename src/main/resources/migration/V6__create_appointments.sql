@@ -1,9 +1,6 @@
--- Fisa medicala este generata automat de sistem dupa ce pacientul
--- declara cele 3 simptome. Fiecare consultatie are propria fisa,
+-- Fisa medicala este generata automat de sistem dupa ce pacientul, declara cele 3 simptome. Fiecare consultatie are propria fisa,
 -- formata din intrebari generate dinamic de functia din V8.
--- Am ales sa stochez intrebarile si raspunsurile in tabele separate
--- pentru a putea analiza raspunsurile individual si a le reutiliza
--- in consultatii viitoare ale aceluiasi pacient.
+-- Am ales sa stochez intrebarile si raspunsurile in tabele separate, pentru a putea analiza raspunsurile individual si a le reutilizain consultatii viitoare ale aceluiasi pacient.
 
 CREATE TABLE medical_form_questions (
                                         id               BIGSERIAL     PRIMARY KEY,

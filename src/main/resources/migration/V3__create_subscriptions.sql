@@ -2,7 +2,6 @@
 -- Un pacient poate avea un singur abonament activ la un moment dat,
 -- dar poate avea istoric de abonamente anterioare (lunar sau anual).
 
-
 CREATE TABLE subscriptions (
                                id              BIGSERIAL PRIMARY KEY,
                                patient_id      BIGINT              NOT NULL REFERENCES patients(id) ON DELETE CASCADE,

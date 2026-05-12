@@ -130,10 +130,6 @@ VALUES
      v_order_idx, TRUE);
 v_order_idx := v_order_idx + 1;
 
-    -- ================================================================
-    -- REGULA 2: FEBRA + DURERI ABDOMINALE + VARSATURI
-    -- potential toxiinfectie alimentara sau gripa digestiva
-    -- ================================================================
     IF v_has_fever AND v_has_abdominal AND v_has_vomiting THEN
 
         INSERT INTO medical_form_questions

@@ -1,7 +1,5 @@
 -- Doctorii sunt tot useri in sistem, dar cu rolul DOCTOR.
--- Am ales sa am un tabel separat pentru profilul medical al doctorului
--- din acelasi motiv ca la pacienti - separarea datelor de autentificare
--- de datele profesionale.
+-- Am ales sa am un tabel separat pentru profilul medical al doctorului, din acelasi motiv ca la pacienti - separarea datelor de autentificare de datele profesionale.
 
 CREATE TABLE doctors (
                          id               BIGSERIAL PRIMARY KEY,
@@ -47,18 +45,9 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_validate_doctor_role
     BEFORE INSERT ON doctors
     FOR EACH ROW EXECUTE FUNCTION validate_doctor_user_role();
+=============================
 
--- ============================================================
--- DOCTOR SCHEDULES
--- ============================================================
-
--- Fiecare doctor are un program saptamanal predefinit.
--- Am ales sa stochez ziua ca INTEGER (0=Luni, 6=Duminica)
--- pentru ca e mai usor de lucrat in calcule de programare.
--- Un doctor poate avea mai multe intervale intr-o zi
--- (ex: 08:00-13:00 si 15:00-19:00) deci nu am pus UNIQUE pe
--- (doctor_id, day_of_week), ci doar o constrangere de overlap.
-
+-- Fiecare doctor are un program saptamanal predefinit, am ales sa stochez ziua ca INTEGER (0=Luni, 6=Duminica)
 CREATE TABLE doctor_schedules (
                                   id           BIGSERIAL PRIMARY KEY,
                                   doctor_id    BIGINT    NOT NULL REFERENCES doctors(id) ON DELETE CASCADE,
