@@ -129,7 +129,7 @@ FROM consultation_symptoms
 WHERE consultation_id = NEW.consultation_id;
 
 
-IF v_count = 2 THEN
+IF v_count = 3 THEN
 UPDATE consultations
 SET status = 'FORM_GENERATED'
 WHERE id = NEW.consultation_id;

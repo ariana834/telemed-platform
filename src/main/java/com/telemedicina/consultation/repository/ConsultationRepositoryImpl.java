@@ -6,11 +6,12 @@ import com.telemedicina.consultation.model.*;
 import com.telemedicina.shared.exception.ApiException;
 import com.telemedicina.shared.exception.AppointmentUnavailableException;
 import com.telemedicina.shared.exception.NoActiveSubscriptionException;
-import org.springframework.http.HttpStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCallback;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
@@ -121,15 +122,17 @@ public class ConsultationRepositoryImpl implements ConsultationRepository {
         );
     }
 
-
-    //proceduri
     @Override
     public void computeDiagnosis(Long consultationId) {
-        // compute_preliminary_diagnosis - sistem de scoruri:
-        // fiecare simptom + raspuns adauga puncte la diagnosticele posibile
-        // insereaza max 2 diagnostice AUTO_GENERATED si trece statusul in DIAGNOSIS_PENDING
         try {
-            jdbc.update("SELECT compute_preliminary_diagnosis(?)", consultationId);
+            jdbc.execute(
+                    "SELECT compute_preliminary_diagnosis(?)",
+                    (PreparedStatementCallback<Void>) ps -> {
+                        ps.setLong(1, consultationId);
+                        ps.execute();
+                        return null;
+                    }
+            );
         } catch (DataAccessException ex) {
             handleDbException(ex);
             throw ex;
