@@ -28,10 +28,6 @@ public class PrescriptionServiceImpl implements PrescriptionService {
     private final PatientRepository patientRepo;
     private final PrescriptionMapper mapper;
 
-    // ================================================================
-    // RETETE - PACIENT
-    // ================================================================
-
     @Override
     public PrescriptionResponse getById(Long id, Long userId) {
         Prescription prescription = prescriptionRepo.findById(id)
@@ -60,10 +56,6 @@ public class PrescriptionServiceImpl implements PrescriptionService {
 
         return buildPrescriptionResponse(prescription);
     }
-
-    // ================================================================
-    // RETETE - DOCTOR
-    // ================================================================
 
     @Override
     @Transactional
@@ -99,9 +91,6 @@ public class PrescriptionServiceImpl implements PrescriptionService {
         return buildPrescriptionResponse(prescription);
     }
 
-    // ================================================================
-    // TRIMITERI - PACIENT
-    // ================================================================
 
     @Override
     public ReferralResponse getReferralById(Long id, Long userId) {
@@ -133,9 +122,6 @@ public class PrescriptionServiceImpl implements PrescriptionService {
                 .collect(Collectors.toList());
     }
 
-    // ================================================================
-    // TRIMITERI - DOCTOR
-    // ================================================================
 
     @Override
     @Transactional
@@ -159,9 +145,6 @@ public class PrescriptionServiceImpl implements PrescriptionService {
         return mapper.toReferralResponse(referral);
     }
 
-    // ================================================================
-    // HELPERS PRIVATE
-    // ================================================================
 
     // construieste response-ul complet: reteta + medicamentele ei
     private PrescriptionResponse buildPrescriptionResponse(Prescription p) {

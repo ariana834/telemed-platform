@@ -185,6 +185,8 @@ public class AppointmentServiceImpl implements AppointmentService {
     private AppointmentResponse buildResponse(Appointment a) {
         Doctor doctor = appointmentRepo.findDoctorById(a.getDoctorId())
                 .orElseThrow(() -> new ResourceNotFoundException("Doctor", a.getDoctorId()));
-        return mapper.toResponse(a, doctor);
+        String[] name = appointmentRepo.findPatientName(a.getPatientId())
+                .orElse(new String[]{null, null});
+        return mapper.toResponse(a, doctor, name[0], name[1]);
     }
 }

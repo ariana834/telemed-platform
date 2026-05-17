@@ -15,6 +15,7 @@ public interface AppointmentRepository {
     List<Appointment> findAllByDoctorId(Long doctorId);
     void updateStatus(Long id, String status);
     void updateNotes(Long id, String notes);
+    Optional<String[]> findPatientName(Long patientId);
 
     //doctori
     Optional<Doctor> findDoctorById(Long doctorId);

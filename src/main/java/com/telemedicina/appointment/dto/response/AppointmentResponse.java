@@ -10,6 +10,8 @@ import java.time.Instant;
 @Builder
 public class AppointmentResponse {
     private Long id;
+    private String patientFirstName;
+    private String patientLastName;
     private Long consultationId;
     private Long patientId;
     private AppointmentStatus status;

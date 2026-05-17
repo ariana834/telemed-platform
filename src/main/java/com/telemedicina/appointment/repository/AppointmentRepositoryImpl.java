@@ -139,4 +139,14 @@ public class AppointmentRepositoryImpl implements AppointmentRepository {
                 .isActive(rs.getBoolean("is_active"))
                 .build();
     }
+
+    @Override
+    public Optional<String[]> findPatientName(Long patientId) {
+        List<String[]> result = jdbc.query(
+                "SELECT first_name, last_name FROM patients WHERE id = ?",
+                (rs, rowNum) -> new String[]{ rs.getString("first_name"), rs.getString("last_name") },
+                patientId
+        );
+        return result.isEmpty() ? Optional.empty() : Optional.of(result.get(0));
+    }
 }

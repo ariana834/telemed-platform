@@ -13,7 +13,7 @@ import java.util.List;
 public class AppointmentMapper {
 
     // appointment + doctor info combinate intr-un singur response
-    public AppointmentResponse toResponse(Appointment a, Doctor doctor) {
+    public AppointmentResponse toResponse(Appointment a, Doctor doctor, String patientFirstName, String patientLastName) {
         return AppointmentResponse.builder()
                 .id(a.getId())
                 .consultationId(a.getConsultationId())
@@ -28,6 +28,8 @@ public class AppointmentMapper {
                 .doctorFirstName(doctor.getFirstName())
                 .doctorLastName(doctor.getLastName())
                 .doctorSpecialization(doctor.getSpecialization())
+                .patientFirstName(patientFirstName)
+                .patientLastName(patientLastName)
                 .build();
     }
 
