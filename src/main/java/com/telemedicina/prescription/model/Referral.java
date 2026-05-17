@@ -18,6 +18,7 @@ public class Referral {
     private Long doctorId;
     private ReferralType referralType;
     private ReferralPriority priority;
+    private String doctorName;
     private String destination;
     private String reason;
     private Instant issuedAt;

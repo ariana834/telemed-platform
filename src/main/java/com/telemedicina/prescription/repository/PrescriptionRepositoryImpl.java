@@ -79,31 +79,6 @@ public class PrescriptionRepositoryImpl implements PrescriptionRepository {
     }
 
     @Override
-    public Optional<Referral> findReferralById(Long id) {
-        List<Referral> result = jdbc.query(
-                "SELECT * FROM referrals WHERE id = ?",
-                referralRowMapper(), id
-        );
-        return result.isEmpty() ? Optional.empty() : Optional.of(result.get(0));
-    }
-
-    @Override
-    public List<Referral> findReferralsByPatientId(Long patientId) {
-        return jdbc.query(
-                "SELECT * FROM referrals WHERE patient_id = ? ORDER BY issued_at DESC",
-                referralRowMapper(), patientId
-        );
-    }
-
-    @Override
-    public List<Referral> findReferralsByConsultationId(Long consultationId) {
-        return jdbc.query(
-                "SELECT * FROM referrals WHERE consultation_id = ?",
-                referralRowMapper(), consultationId
-        );
-    }
-
-    @Override
     public Long createReferral(Long consultationId, Long patientId, Long doctorId,
                                String referralType, String priority, String destination, String reason) {
         return jdbc.queryForObject(
@@ -163,6 +138,7 @@ public class PrescriptionRepositoryImpl implements PrescriptionRepository {
                 .consultationId(rs.getLong("consultation_id"))
                 .patientId(rs.getLong("patient_id"))
                 .doctorId(rs.getObject("doctor_id") != null ? rs.getLong("doctor_id") : null)
+                .doctorName(rs.getString("doctor_full_name"))   // ← adaugă
                 .referralType(ReferralType.valueOf(rs.getString("referral_type")))
                 .priority(ReferralPriority.valueOf(rs.getString("priority")))
                 .destination(rs.getString("destination"))
@@ -170,5 +146,52 @@ public class PrescriptionRepositoryImpl implements PrescriptionRepository {
                 .issuedAt(rs.getTimestamp("issued_at") != null
                         ? rs.getTimestamp("issued_at").toInstant() : null)
                 .build();
+    }
+
+    @Override
+    public List<Referral> findReferralsByPatientId(Long patientId) {
+        return jdbc.query(
+                """
+                SELECT r.*, 
+                       u.first_name || ' ' || u.last_name AS doctor_full_name
+                FROM referrals r
+                LEFT JOIN doctors d ON d.id = r.doctor_id
+                LEFT JOIN users u ON u.id = d.user_id
+                WHERE r.patient_id = ?
+                ORDER BY r.issued_at DESC
+                """,
+                referralRowMapper(), patientId
+        );
+    }
+
+    @Override
+    public Optional<Referral> findReferralById(Long id) {
+        List<Referral> result = jdbc.query(
+                """
+                SELECT r.*,
+                       u.first_name || ' ' || u.last_name AS doctor_full_name
+                FROM referrals r
+                LEFT JOIN doctors d ON d.id = r.doctor_id
+                LEFT JOIN users u ON u.id = d.user_id
+                WHERE r.id = ?
+                """,
+                referralRowMapper(), id
+        );
+        return result.isEmpty() ? Optional.empty() : Optional.of(result.get(0));
+    }
+
+    @Override
+    public List<Referral> findReferralsByConsultationId(Long consultationId) {
+        return jdbc.query(
+                """
+                SELECT r.*,
+                       u.first_name || ' ' || u.last_name AS doctor_full_name
+                FROM referrals r
+                LEFT JOIN doctors d ON d.id = r.doctor_id
+                LEFT JOIN users u ON u.id = d.user_id
+                WHERE r.consultation_id = ?
+                """,
+                referralRowMapper(), consultationId
+        );
     }
 }

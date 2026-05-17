@@ -50,6 +50,7 @@ public class PrescriptionMapper {
                 .doctorId(r.getDoctorId())
                 .referralType(r.getReferralType())
                 .priority(r.getPriority())
+                .doctorName(r.getDoctorName())
                 .destination(r.getDestination())
                 .reason(r.getReason())
                 .issuedAt(r.getIssuedAt())

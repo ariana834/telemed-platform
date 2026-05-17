@@ -76,7 +76,7 @@ public class PrescriptionController {
     }
 
     // trimiterile unei consultatii specifice
-    @GetMapping("/api/referrals/consultation/{consultationId}")
+    @GetMapping("/api/v1/referrals/consultation/{consultationId}")
     public ResponseEntity<List<ReferralResponse>> getReferralsByConsultation(
             @PathVariable Long consultationId,
             @AuthenticationPrincipal CustomUserDetails user) {
@@ -85,7 +85,7 @@ public class PrescriptionController {
     }
 
     // doctor creeaza o trimitere catre spital sau investigatii
-    @PostMapping("/api/referrals")
+    @PostMapping("/api/v1/referrals")
     public ResponseEntity<ReferralResponse> createReferral(
             @RequestBody @Valid CreateReferralRequest request,
             @AuthenticationPrincipal CustomUserDetails user) {

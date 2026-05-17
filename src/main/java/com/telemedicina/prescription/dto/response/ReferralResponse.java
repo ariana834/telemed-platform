@@ -14,6 +14,7 @@ public class ReferralResponse {
     private Long consultationId;
     private Long patientId;
     private Long doctorId;
+    private String doctorName;      // ← adaugă asta
     private ReferralType referralType;
     private ReferralPriority priority;
     private String destination;

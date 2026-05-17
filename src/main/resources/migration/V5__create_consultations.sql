@@ -17,7 +17,6 @@ CREATE TABLE consultations (
 );
 
 CREATE INDEX idx_consultations_patient_id ON consultations(patient_id);
--- caut des dupa status cand listez consultatiile active
 CREATE INDEX idx_consultations_status     ON consultations(status);
 CREATE INDEX idx_consultations_created_at ON consultations(created_at DESC);
 
@@ -25,21 +24,17 @@ CREATE TRIGGER trg_consultations_updated_at
     BEFORE UPDATE ON consultations
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
--- adaug triggerul definit in V3 care verifica abonamentul activ
 CREATE TRIGGER trg_check_active_subscription
     BEFORE INSERT ON consultations
     FOR EACH ROW EXECUTE FUNCTION check_active_subscription();
 
--- verific tranzitiile valide intre statusuri
 CREATE OR REPLACE FUNCTION validate_consultation_status_transition()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- daca statusul nu s-a schimbat, nu fac nimic
     IF OLD.status = NEW.status THEN
         RETURN NEW;
 END IF;
 
-    -- definesc tranzitiile valide ca un set de perechi (vechi -> nou)
     IF NOT (
         (OLD.status = 'PENDING_FORM'      AND NEW.status = 'FORM_GENERATED')      OR
         (OLD.status = 'PENDING_FORM'      AND NEW.status = 'EMERGENCY_REDIRECT')  OR
@@ -54,6 +49,7 @@ END IF;
         RAISE EXCEPTION 'INVALID_STATUS_TRANSITION: Tranzitia de la % la % nu este permisa',
             OLD.status, NEW.status;
 END IF;
+
     IF NEW.status = 'EMERGENCY_REDIRECT' THEN
         NEW.emergency_redirect := TRUE;
 END IF;
@@ -82,10 +78,8 @@ CREATE TABLE consultation_symptoms (
 );
 
 CREATE INDEX idx_symptoms_consultation_id ON consultation_symptoms(consultation_id);
--- indexez pe symptom_name pentru rapoarte si statistici
 CREATE INDEX idx_symptoms_name            ON consultation_symptoms(symptom_name);
 
--- verific ca o consultatie nu poate avea mai mult de 3 simptome
 CREATE OR REPLACE FUNCTION check_max_symptoms()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -118,7 +112,10 @@ CREATE TRIGGER trg_check_max_symptoms
     BEFORE INSERT ON consultation_symptoms
     FOR EACH ROW EXECUTE FUNCTION check_max_symptoms();
 
--- dupa ce se adauga al 3-lea simptom, trec automat consultatie, in starea FORM_GENERATED si generez fisa medicala.
+-- FIX: generam fisa INAINTE de a schimba statusul, astfel incat tranzitia
+-- PENDING_FORM → EMERGENCY_REDIRECT sa fie valida (daca e caz de urgenta).
+-- Dupa generare, setam FORM_GENERATED doar daca statusul a ramas PENDING_FORM
+-- (adica nu s-a intrat pe EMERGENCY_REDIRECT in generate_medical_form).
 CREATE OR REPLACE FUNCTION auto_generate_form_on_third_symptom()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -128,14 +125,13 @@ SELECT COUNT(*) INTO v_count
 FROM consultation_symptoms
 WHERE consultation_id = NEW.consultation_id;
 
-
 IF v_count = 3 THEN
+        PERFORM generate_medical_form(NEW.consultation_id);
+
 UPDATE consultations
 SET status = 'FORM_GENERATED'
-WHERE id = NEW.consultation_id;
-
--- generarea efectiva a fisei se face din V8
-PERFORM generate_medical_form(NEW.consultation_id);
+WHERE id = NEW.consultation_id
+  AND status = 'PENDING_FORM';
 END IF;
 
 RETURN NEW;
