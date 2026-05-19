@@ -1,6 +1,5 @@
 -- Aici tin evidenta abonamentelor pacientilor.
--- Un pacient poate avea un singur abonament activ la un moment dat,
--- dar poate avea istoric de abonamente anterioare (lunar sau anual).
+-- Un pacient poate avea un singur abonament activ la un moment dat,dar poate avea istoric de abonamente anterioare (lunar sau anual).
 
 CREATE TABLE subscriptions (
                                id              BIGSERIAL PRIMARY KEY,
@@ -20,7 +19,6 @@ CREATE TABLE subscriptions (
 );
 
 CREATE INDEX idx_subscriptions_patient_id ON subscriptions(patient_id);
--- indexez si pe status pentru ca voi cauta des dupa status = ACTIVE
 CREATE INDEX idx_subscriptions_status    ON subscriptions(status);
 
 CREATE TRIGGER trg_subscriptions_updated_at
@@ -28,7 +26,6 @@ CREATE TRIGGER trg_subscriptions_updated_at
     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- end_date se calculeaza automat in functie de tipul abonamentului
--- lunar = +1 luna, anual = +1 an de la data de start
 CREATE OR REPLACE FUNCTION set_subscription_end_date()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -64,11 +61,10 @@ BEGIN
     IF NEW.end_date < CURRENT_DATE AND NEW.status = 'ACTIVE' THEN
         NEW.status := 'EXPIRED';
 
-        -- ridic o notificare (o vom prinde in Java ca warning, nu eroare)
+        -- o prind in Java ca warning, nu ca eroare
         RAISE NOTICE 'SUBSCRIPTION_EXPIRED: Abonamentul % al pacientului % a expirat',
             NEW.id, NEW.patient_id;
 END IF;
-
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -78,10 +74,7 @@ CREATE TRIGGER trg_check_subscription_expiry
     FOR EACH ROW EXECUTE FUNCTION check_subscription_expiry();
 
 
--- trigger care blocheaza crearea unei consultatii daca pacientul nu are abonament activ.
--- Il definesc aici pentru ca depinde de tabela subscriptions,
--- dar va fi folosit pe tabela consultations (definita in V5)
--- IMPORTANT: triggerul efectiv pe consultations il adaug in V5, dar functia o creez aici ca sa fie disponibila
+-- !!!!!!!trigger care blocheaza crearea unei consultatii daca pacientul nu are abonament activ
 CREATE OR REPLACE FUNCTION check_active_subscription()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -93,20 +86,15 @@ SELECT EXISTS (
       AND status = 'ACTIVE'
       AND end_date >= CURRENT_DATE
 ) INTO v_has_active;
-
 IF NOT v_has_active THEN
-        -- arunc o exceptie cu un cod pe care o s o prind in Java
         RAISE EXCEPTION 'NO_ACTIVE_SUBSCRIPTION: Pacientul % nu are un abonament activ',
             NEW.patient_id;
 END IF;
-
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- tin evidenta tuturor platilor pentru fiecare abonament.
--- chiar daca o plata esueaza, o inregistrez cu status = FAILED
--- ca sa am un istoric complet
+-- tin evidenta tuturor platilor pentru fiecare abonament, chiar daca o plata esueaza, o inregistrez cu status = FAILED, ca sa am un istoric complet
 CREATE TABLE payment_history (
                                  id                  BIGSERIAL PRIMARY KEY,
                                  subscription_id     BIGINT          NOT NULL REFERENCES subscriptions(id) ON DELETE CASCADE,
@@ -134,7 +122,6 @@ SET status = 'ACTIVE'
 WHERE id = NEW.subscription_id
   AND status = 'PENDING';
 END IF;
-
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

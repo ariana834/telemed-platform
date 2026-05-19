@@ -18,7 +18,7 @@ public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    // Excepțiile noastre custom
+    //exceptiile facute de mine
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiError> handleApiException(ApiException ex) {
         log.warn("ApiException: {}", ex.getMessage());
@@ -31,7 +31,6 @@ public class GlobalExceptionHandler {
     }
 
     // Excepții aruncate din PL/pgSQL prin RAISE EXCEPTION
-    // Cerința proiect: minim 2 excepții prinse din DB
     @ExceptionHandler(SQLException.class)
     public ResponseEntity<ApiError> handleSQLException(SQLException ex) {
         log.error("SQLException din DB: {}", ex.getMessage());
@@ -50,8 +49,6 @@ public class GlobalExceptionHandler {
             ApiError error = new ApiError(400, "Bad Request", detail);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
-
-        // Alte excepții DB notabile
         if (msg.contains("MAX_SYMPTOMS_REACHED")) {
             ApiError error = new ApiError(400, "Bad Request", "Maxim 3 simptome permise per consultație");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
@@ -108,7 +105,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
-    // Validare @Valid pe DTO-uri
+    // Validare
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex) {
         String firstError = ex.getBindingResult().getFieldErrors().stream()
@@ -126,14 +123,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
 
-    // Acces interzis (@PreAuthorize, etc.)
+    // Acces interzis
     @ExceptionHandler(AuthorizationDeniedException.class)
     public ResponseEntity<ApiError> handleAuthorizationDenied(AuthorizationDeniedException ex) {
         ApiError error = new ApiError(403, "Forbidden", "Nu ai permisiunea pentru această acțiune");
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
-    // Catch-all
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneral(Exception ex) {
         log.error("Eroare neașteptată: ", ex);

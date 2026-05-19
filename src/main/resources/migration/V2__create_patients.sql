@@ -1,6 +1,6 @@
 CREATE TABLE patients (
-                          id              BIGSERIAL PRIMARY KEY,
-                          user_id         BIGINT       NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+                          id BIGSERIAL PRIMARY KEY,
+                          user_id  BIGINT  NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
                           first_name      VARCHAR(100) NOT NULL,
                           last_name       VARCHAR(100) NOT NULL,
                           birth_date      DATE         NOT NULL,
@@ -37,7 +37,6 @@ v_age INTEGER;
 BEGIN
     v_age := DATE_PART('year', AGE(CURRENT_DATE, NEW.birth_date))::INTEGER;
     NEW.age := v_age;
-
     IF v_age < 18 THEN
         NEW.age_category := 'CHILD';
     ELSIF v_age >= 65 THEN
@@ -45,7 +44,6 @@ BEGIN
 ELSE
         NEW.age_category := 'ADULT';
 END IF;
-
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;

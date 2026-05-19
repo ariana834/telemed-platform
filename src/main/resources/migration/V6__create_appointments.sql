@@ -7,10 +7,6 @@ CREATE TABLE medical_form_questions (
                                         consultation_id  BIGINT        NOT NULL REFERENCES consultations(id) ON DELETE CASCADE,
                                         question_text    TEXT          NOT NULL,
                                         question_type    question_type NOT NULL,
-    -- pentru intrebarile de tip MULTIPLE_CHOICE sau CHECKBOX
-    -- stochez optiunile ca JSON array: ["Optiune1", "Optiune2", ...]
-    -- am ales JSONB in loc de un tabel separat pentru ca optiunile
-    -- sunt strans legate de intrebare si nu sunt entitati de sine statatoare
                                         options          JSONB,
                                         order_index      SMALLINT      NOT NULL,
                                         is_required      BOOLEAN       NOT NULL DEFAULT TRUE,
@@ -27,9 +23,6 @@ CREATE TABLE medical_form_questions (
 
 CREATE INDEX idx_questions_consultation_id ON medical_form_questions(consultation_id);
 
--- ============================================================
--- MEDICAL FORM ANSWERS
--- ============================================================
 
 -- Raspunsurile pacientului la fisa medicala.
 -- Un pacient poate raspunde o singura data la fiecare intrebare.
@@ -46,7 +39,7 @@ CREATE TABLE medical_form_answers (
                                       answer_text      TEXT        NOT NULL,
                                       created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-    -- un pacient raspunde o singura data la fiecare intrebare
+                                      -- un pacient raspunde o singura data la fiecare intrebare
                                       CONSTRAINT uq_one_answer_per_question UNIQUE (question_id, consultation_id)
 );
 
@@ -90,17 +83,11 @@ CREATE TRIGGER trg_check_form_completion
     AFTER INSERT ON medical_form_answers
     FOR EACH ROW EXECUTE FUNCTION check_form_completion();
 
--- ============================================================
--- DIAGNOSES
--- ============================================================
 
 -- Diagnosticele pot fi de 3 tipuri:
 -- AUTO_GENERATED - generate de sistem dupa completarea fisei
 -- PRELIMINARY    - confirmate provizoriu de sistem inainte de consultatie
 -- CONFIRMED      - confirmate sau modificate de doctor dupa consultatie
---
--- O consultatie poate avea maxim 2 diagnostice AUTO_GENERATED/PRELIMINARY
--- (conform cerintei) si unul singur CONFIRMED.
 
 CREATE TABLE diagnoses (
                            id                BIGSERIAL        PRIMARY KEY,
@@ -128,7 +115,7 @@ CREATE TABLE diagnoses (
 CREATE INDEX idx_diagnoses_consultation_id ON diagnoses(consultation_id);
 CREATE INDEX idx_diagnoses_type            ON diagnoses(diagnosis_type);
 
--- verific limita de 2 diagnostice automate per consultatie
+
 CREATE OR REPLACE FUNCTION check_diagnosis_limit()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -166,8 +153,7 @@ CREATE TRIGGER trg_check_diagnosis_limit
     BEFORE INSERT ON diagnoses
     FOR EACH ROW EXECUTE FUNCTION check_diagnosis_limit();
 
--- cand se adauga un diagnostic confirmat de doctor,
--- trec consultatie in COMPLETED automat
+-- cand se adauga un diagnostic confirmat de doctor, trec consultatie in COMPLETED automat
 CREATE OR REPLACE FUNCTION complete_consultation_on_diagnosis()
 RETURNS TRIGGER AS $$
 BEGIN

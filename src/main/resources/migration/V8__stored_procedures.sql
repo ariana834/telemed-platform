@@ -1,10 +1,8 @@
--- ================================================================
 -- V8__stored_procedures.sql
 -- 1. generate_medical_form
 -- 2. compute_preliminary_diagnosis
 -- 3. schedule_next_appointment  ← specialty-matching refacut
 -- 4. auto_generate_prescription
--- ================================================================
 
 CREATE OR REPLACE FUNCTION generate_medical_form(p_consultation_id BIGINT)
 RETURNS VOID AS $$
@@ -193,10 +191,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- ================================================================
--- 2. COMPUTE PRELIMINARY DIAGNOSIS
--- ================================================================
 
+-- 2. COMPUTE PRELIMINARY DIAGNOSIS
 CREATE OR REPLACE FUNCTION compute_preliminary_diagnosis(p_consultation_id BIGINT)
 RETURNS VOID AS $$
 DECLARE
@@ -327,10 +323,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 
--- ================================================================
--- 3. SCHEDULE NEXT APPOINTMENT — cu specialty matching
--- ================================================================
 
+-- 3. SCHEDULE NEXT APPOINTMENT — cu specialty matching
 CREATE OR REPLACE FUNCTION schedule_next_appointment(p_consultation_id BIGINT)
 RETURNS BIGINT AS $$
 DECLARE

@@ -18,14 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
-/**
- * Logica de business pentru pacienți.
- *
- * Principiu: service-ul validează regulile aplicației (un user nu poate
- * avea 2 profiluri, nu poți edita profilul altcuiva etc.).
- * Regulile de DB (trigger-ele) sunt un al doilea nivel de apărare —
- * dacă service-ul scapă ceva, DB-ul prinde.
- */
+
 @Service
 public class PatientServiceImpl implements PatientService {
 
@@ -78,7 +71,6 @@ public class PatientServiceImpl implements PatientService {
     @Override
     public GuardianResponse addGuardian(Long patientId, Long guardianUserId,
                                         GuardianRequest request) {
-        // ResourceNotFoundException(resource, id) → "Pacient cu id X nu a fost găsit"
         patientRepository.findById(patientId).orElseThrow(() -> new ResourceNotFoundException("Pacient", patientId));
 
         patientRepository.createGuardian(patientId, guardianUserId, request);

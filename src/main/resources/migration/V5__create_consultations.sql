@@ -2,8 +2,7 @@
 -- Am modelat asta ca un state machine - fiecare stare permite doar anumite tranzitii, verificate prin trigger.
 -- Fluxul normal arata asa:
 -- PENDING_FORM → FORM_GENERATED → FORM_COMPLETED → DIAGNOSIS_PENDING → SCHEDULED → IN_PROGRESS → COMPLETED
--- Fluxul de urgenta:
--- PENDING_FORM → EMERGENCY_REDIRECT
+-- Fluxul de urgenta: PENDING_FORM → EMERGENCY_REDIRECT
 
 CREATE TABLE consultations (
                                id                  BIGSERIAL PRIMARY KEY,
@@ -53,7 +52,6 @@ END IF;
     IF NEW.status = 'EMERGENCY_REDIRECT' THEN
         NEW.emergency_redirect := TRUE;
 END IF;
-
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -78,13 +76,13 @@ CREATE TABLE consultation_symptoms (
 );
 
 CREATE INDEX idx_symptoms_consultation_id ON consultation_symptoms(consultation_id);
-CREATE INDEX idx_symptoms_name            ON consultation_symptoms(symptom_name);
+CREATE INDEX idx_symptoms_name  ON consultation_symptoms(symptom_name);
 
 CREATE OR REPLACE FUNCTION check_max_symptoms()
 RETURNS TRIGGER AS $$
 DECLARE
 v_count        INTEGER;
-    v_status       consultation_status;
+v_status       consultation_status;
 BEGIN
 SELECT status INTO v_status
 FROM consultations
@@ -98,12 +96,10 @@ END IF;
 SELECT COUNT(*) INTO v_count
 FROM consultation_symptoms
 WHERE consultation_id = NEW.consultation_id;
-
 IF v_count >= 3 THEN
-        RAISE EXCEPTION 'MAX_SYMPTOMS_REACHED: O consultatie poate avea maxim 3 simptome (consultatie: %)',
+        RAISE EXCEPTION 'MAX_SYMPTOMS_REACHED: o consultatie poate avea maxim 3 simptome (consultatie: %)',
             NEW.consultation_id;
 END IF;
-
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -112,10 +108,6 @@ CREATE TRIGGER trg_check_max_symptoms
     BEFORE INSERT ON consultation_symptoms
     FOR EACH ROW EXECUTE FUNCTION check_max_symptoms();
 
--- FIX: generam fisa INAINTE de a schimba statusul, astfel incat tranzitia
--- PENDING_FORM → EMERGENCY_REDIRECT sa fie valida (daca e caz de urgenta).
--- Dupa generare, setam FORM_GENERATED doar daca statusul a ramas PENDING_FORM
--- (adica nu s-a intrat pe EMERGENCY_REDIRECT in generate_medical_form).
 CREATE OR REPLACE FUNCTION auto_generate_form_on_third_symptom()
 RETURNS TRIGGER AS $$
 DECLARE

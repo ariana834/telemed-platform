@@ -19,7 +19,6 @@ import java.util.Optional;
 
 @Repository
 public class PatientRepositoryImpl implements PatientRepository {
-
     private final JdbcTemplate jdbc;
     private final PatientMapper mapper;
 
@@ -34,7 +33,6 @@ public class PatientRepositoryImpl implements PatientRepository {
                                       gender, blood_type, phone, cnp, address)
                 VALUES (?, ?, ?, ?, ?::gender, ?, ?, ?, ?)
                 """;
-
         KeyHolder keyHolder = new GeneratedKeyHolder();
 
         jdbc.update(conn -> {
@@ -64,7 +62,6 @@ public class PatientRepositoryImpl implements PatientRepository {
                 FROM patients
                 WHERE user_id = ?
                 """;
-
         List<Patient> results = jdbc.query(sql, mapper::mapToPatient, userId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
@@ -123,12 +120,10 @@ public class PatientRepositoryImpl implements PatientRepository {
         return count != null && count > 0;
     }
 
-    // ─── Guardian ─────────────────────────────────────────────────────────────
-
     @Override
     public Long createGuardian(Long patientId, Long guardianUserId, GuardianRequest req) {
         // Triggerul trg_validate_guardian verifică că patientId e un CHILD
-        // Dacă nu e, aruncă GUARDIAN_ONLY_FOR_CHILD → prins în GlobalExceptionHandler
+        // Dacă nu e, aruncă GUARDIAN_ONLY_FOR_CHILD, prins în GlobalExceptionHandler
         String sql = """
                 INSERT INTO guardians (patient_id, guardian_user_id,
                                        first_name, last_name, phone, email, relationship)
@@ -164,8 +159,6 @@ public class PatientRepositoryImpl implements PatientRepository {
         List<Guardian> results = jdbc.query(sql, mapper::mapToGuardian, patientId);
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
-
-    // ─── Chronic Conditions ───────────────────────────────────────────────────
 
     @Override
     public Long createChronicCondition(Long patientId, ChronicConditionRequest req) {

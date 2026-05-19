@@ -1,5 +1,4 @@
--- Doctorii sunt tot useri in sistem, dar cu rolul DOCTOR.
--- Am ales sa am un tabel separat pentru profilul medical al doctorului, din acelasi motiv ca la pacienti - separarea datelor de autentificare de datele profesionale.
+-- Doctorii sunt tot useri in sistem, dar cu rolul DOCTOR
 
 CREATE TABLE doctors (
                          id               BIGSERIAL PRIMARY KEY,
@@ -19,7 +18,6 @@ CREATE TABLE doctors (
 
 CREATE INDEX idx_doctors_user_id        ON doctors(user_id);
 CREATE INDEX idx_doctors_specialization ON doctors(specialization);
--- caut des dupa disponibilitate cand programez consultatii
 CREATE INDEX idx_doctors_is_available   ON doctors(is_available);
 
 CREATE TRIGGER trg_doctors_updated_at
@@ -37,7 +35,6 @@ SELECT role INTO v_role FROM users WHERE id = NEW.user_id;
 IF v_role != 'DOCTOR' THEN
         RAISE EXCEPTION 'INVALID_USER_ROLE: Userul % nu are rolul DOCTOR', NEW.user_id;
 END IF;
-
 RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -45,7 +42,6 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_validate_doctor_role
     BEFORE INSERT ON doctors
     FOR EACH ROW EXECUTE FUNCTION validate_doctor_user_role();
-=============================
 
 -- Fiecare doctor are un program saptamanal predefinit, am ales sa stochez ziua ca INTEGER (0=Luni, 6=Duminica)
 CREATE TABLE doctor_schedules (
@@ -59,7 +55,6 @@ CREATE TABLE doctor_schedules (
 
                                   CONSTRAINT chk_day_of_week  CHECK (day_of_week BETWEEN 0 AND 6),
                                   CONSTRAINT chk_time_range   CHECK (end_time > start_time),
-    -- un interval minim de 30 de minute ca sa aiba sens
                                   CONSTRAINT chk_min_duration CHECK (
                                       EXTRACT(EPOCH FROM (end_time - start_time)) / 60 >= 30
                                       )
@@ -110,9 +105,7 @@ CREATE TRIGGER trg_check_schedule_overlap
                          FOR EACH ROW EXECUTE FUNCTION check_schedule_overlap();
 
 
--- returneaza toti doctorii disponibili
--- intr-un anumit interval de timp, tinand cont de program.
--- o voi folosi in algoritmul de programare automata din V8.
+-- returneaza toti doctorii disponibili, intr-un anumit interval de timp, tinand cont de program.
 CREATE OR REPLACE FUNCTION get_available_doctors(
     p_day_of_week  SMALLINT,
     p_start_time   TIME,
